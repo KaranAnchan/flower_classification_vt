@@ -1,0 +1,33 @@
+name: Evaluation
+
+on:
+  push:
+    branches:
+      - fast
+      - large
+
+jobs:
+  evaluation:
+
+    runs-on:
+      - self-hosted
+      - competition
+
+    steps:
+      - name: Evaluate Model
+        run: |
+          response=$(curl -sS -N -X POST -H "Content-Type: application/json" \
+               -d '{"repo_url": "${{ github.server_url }}/${{ github.repository }}", "revision": "${{ github.sha }}", "track": "${{ github.ref_name }}"}' \
+               https://ml-leaderboard.informatik.uni-freiburg.de/evaluate | tee /dev/tty)
+
+          if echo "$response" | grep -q "Internal Server Error"; then
+            echo "::error::Evaluation was not successful. Please reach out to the organizers."
+            exit 1
+          fi
+
+          if echo "$response" | grep -q '"success": *false'; then
+            echo "::error::$response"
+            exit 1
+          fi
+
+          echo "::notice::$response"
